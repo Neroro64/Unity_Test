@@ -80,6 +80,15 @@ public class FluidParticle : MonoBehaviour {
         else
             return 0;
     }
+    public double CalcMatrixValue2(int i, int j)
+    {
+        if (j == 0)
+            return -weights[i+1];
+        else if (j-1 == i)
+            return weights[i+1];
+        else
+            return 0;
+    }
 
     double weightKernel(Vector3 pos)
     {
@@ -92,6 +101,11 @@ public class FluidParticle : MonoBehaviour {
             return 0;
         return ((-lambda * DENSITY) / (6f * Time.deltaTime)) * (weights[i] - d_ParticleDensity);
     }
+    public double calcRightSideValue2(int i)
+    {
+        return ((-lambda * DENSITY) / (6f * Time.deltaTime)) * (weights[i+1] - d_ParticleDensity);
+    }
+
 
     private void calcLambda()
     {
