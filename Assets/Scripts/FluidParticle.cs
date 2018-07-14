@@ -2,38 +2,41 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class FluidParticle : MonoBehaviour {
-    const float InteractionRadius = 1f;
+public class FluidParticle : Particle{
+    const float InteractionRadius = 2f;
     [System.NonSerialized]
-    public int defaultParticleDensity = 19;
+    public double defaultParticleDensity = 41.2f;
+    public double particleDensity;
     public float DENSITY = 997;
+    public Vector3 Gravity;
     
     public Vector3 tempPos, currentV, tempV, pressure;
-    public FluidParticle[] nearbyParticles;
+    public Particle[] nearbyParticles;
+    [System.NonSerialized]
     public double freeSurfaceTerm;
 
     double lambda;
     public double[] weights;
     double d_ParticleDensity;
-
+    [System.NonSerialized]
     public Vector3 force;
 
     private void Start()
     {
-        freeSurfaceTerm = defaultParticleDensity * 0.97f;
+        freeSurfaceTerm = defaultParticleDensity * 0.97d;
         currentV = new Vector3();
         pressure = new Vector3();
-        force = new Vector3(0, -9.8f, 0);
+        Gravity = new Vector3(0, 9.8f, 0);
     }
-
-    public Vector3 pos()
+    
+    public override Vector3 Pos()
     {
         return transform.localPosition;
     }
 
     public void checkNearbyObjects()
     {
-        Collider[] colliders = Physics.OverlapSphere(pos(), InteractionRadius);
+        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
         Debug.Log(colliders.Length);
         for (int i = 0; i < colliders.Length; i++)
         {
@@ -41,26 +44,41 @@ public class FluidParticle : MonoBehaviour {
             colliders[i].GetComponent<MeshRenderer>().material.color = Color.red;
         }
     }
-
-    public void Initate()
+    public double CalcParticleDensity()
     {
-        Collider[] colliders = Physics.OverlapSphere(pos(), InteractionRadius);
-        nearbyParticles = new FluidParticle[colliders.Length];
-        weights = new double[nearbyParticles.Length];
-        nearbyParticles[0] = this;
-
-        double a = 0;
-        double b = 0;
-
-        for (int i = 0, j = 1; i < nearbyParticles.Length; i++)
+        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
+        double particleDensity = 0;
+        for (int i = 0; i < colliders.Length; i++)
         {
             if (colliders[i].gameObject.name.Equals(this.gameObject.name))
                 continue;
-                
-            nearbyParticles[j] = colliders[i].GetComponent<FluidParticle>();
-            weights[j] = weightKernel(nearbyParticles[j].pos());
-            a += weights[j] * Mathf.Pow((nearbyParticles[j].pos() - this.pos()).sqrMagnitude, 2); // w(r) * r^2
+            particleDensity += weightKernel(colliders[i].transform.localPosition);
+        }
+        return particleDensity;
+    }
+
+    public void Initate()
+    {
+        Collider[] colliders = Physics.OverlapSphere(tempPos, InteractionRadius);
+        nearbyParticles = new Particle[colliders.Length];
+        weights = new double[nearbyParticles.Length];
+        if (colliders.Length == 0)
+            Debug.DebugBreak();
+        nearbyParticles[0] = this;
+        
+        particleDensity = 0;
+        double a = 0;
+        double b = 0;
+
+        for (int i = 0, j = 1; j < nearbyParticles.Length; i++)
+        {
+            if (colliders[i].gameObject.name.Equals(this.gameObject.name))
+                continue;
+            nearbyParticles[j] = colliders[i].GetComponent<Particle>();
+            weights[j] = weightKernel(nearbyParticles[j].Pos());
+            a += weights[j] * Mathf.Pow((nearbyParticles[j].Pos() - this.Pos()).magnitude, 2); // w(r) * r^2
             b += weights[j]; // w(r)
+            particleDensity += weights[j];
             j++;
         }
 
@@ -90,20 +108,20 @@ public class FluidParticle : MonoBehaviour {
             return 0;
     }
 
-    double weightKernel(Vector3 pos)
+    double weightKernel(Vector3 Pos)
     {
-        return (double)InteractionRadius / (double)(pos - this.pos()).sqrMagnitude;
+        return (double)InteractionRadius / (double)((Pos - tempPos).magnitude);
     }
 
     public double calcRightSideValue(int i)
     {
         if (i == 0)
             return 0;
-        return ((-lambda * DENSITY) / (6f * Time.deltaTime)) * (weights[i] - d_ParticleDensity);
+        return ((-lambda * DENSITY) / (6f * Time.fixedDeltaTime)) * (weights[i] - d_ParticleDensity);
     }
     public double calcRightSideValue2(int i)
     {
-        return ((-lambda * DENSITY) / (6f * Time.deltaTime)) * (weights[i+1] - d_ParticleDensity);
+        return ((-lambda * DENSITY) / (6f * Time.fixedDeltaTime)) * (weights[i+1] - d_ParticleDensity);
     }
 
 
@@ -114,8 +132,8 @@ public class FluidParticle : MonoBehaviour {
         double wr;
         for (int i = 1; i < nearbyParticles.Length; i++)
         {
-            wr = weightKernel(nearbyParticles[i].pos());
-            a += wr * Mathf.Pow((nearbyParticles[i].pos() - this.pos()).sqrMagnitude, 2); // w(r) * r^2 
+            wr = weightKernel(nearbyParticles[i].Pos());
+            a += wr * Mathf.Pow((nearbyParticles[i].Pos() - this.Pos()).magnitude, 2); // w(r) * r^2 
             b += wr;
         }
 
@@ -126,16 +144,15 @@ public class FluidParticle : MonoBehaviour {
     {
         for (int i = 1; i < nearbyParticles.Length; i++)
         {
-            weights[i] = weightKernel(nearbyParticles[i].pos());
+            weights[i] = weightKernel(nearbyParticles[i].Pos());
         }
     }
 
     public void UpdateForce()
     {
-        force = currentV / Time.deltaTime + Vector3.Scale(currentV, currentV) + (1 / DENSITY) * pressure;
+     //   if (gameObject.name.Equals("P31"))
+     //       Debug.DebugBreak();
+        force = currentV / Time.fixedDeltaTime + (currentV.x+currentV.y+currentV.z) * currentV + (1f / DENSITY) * pressure - Gravity;
+        
     }
-
-
-
-
 }

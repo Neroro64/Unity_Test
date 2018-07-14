@@ -9,7 +9,8 @@ using MathNet.Numerics.LinearAlgebra.Solvers;
 
 
 public class ParticleSpawn : MonoBehaviour {
-    public int NumberOfParticles = 800;
+    [System.NonSerialized]
+    public int NumberOfParticles = 200;
     public GameObject ParticlePrefab;
     public string pName = "P0";
     
@@ -32,13 +33,13 @@ public class ParticleSpawn : MonoBehaviour {
         
         Vector3 pos = new Vector3();
         int x = 0;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 4; i++)
         {
             for (int j = 0; j < 10; j++)
             {
-                for (int k = 0; k < 10; k++)
+                for (int k = 0; k < 5; k++)
                 {
-                    pos.Set(0.8f*j, 0.8f * i, 0.8f * k);
+                    pos.Set(j, i, k);
                     particles[x] = Instantiate<GameObject>(ParticlePrefab, transform).GetComponent<FluidParticle>();
                     particles[x].gameObject.transform.localPosition = pos;
                     particles[x].gameObject.name = "P" + ( x++);
@@ -53,13 +54,21 @@ public class ParticleSpawn : MonoBehaviour {
         {
             GameObject.Find(pName).GetComponent<FluidParticle>().checkNearbyObjects();
         }
+        else if (Input.GetKeyDown("p"))
+            Debug.Log(GameObject.Find(pName).GetComponent<FluidParticle>().CalcParticleDensity());
 
-        else if (Input.GetKeyDown("s")) {
+        else if (Input.GetKeyDown("s"))
+        {
             start = !start;
         }
+    }
+
+    private void FixedUpdate()
+    {
+        if (start)
             calc();
     }
-    
+
 
     void calc()
     {
@@ -67,19 +76,21 @@ public class ParticleSpawn : MonoBehaviour {
         for (int i = 0; i < particles.Length; i++)
         {
             p = particles[i];
-            p.tempV = p.currentV + Time.deltaTime * p.force;
-            p.tempPos = p.pos() + p.tempV * Time.deltaTime;
+
+            p.UpdateForce();
+            p.tempV = p.currentV + Time.fixedDeltaTime * p.force;
+            p.tempPos = p.Pos() + p.tempV * Time.fixedDeltaTime;
+            resultP.Set(0, 0, 0);
 
             p.Initate();
             
-            if ((p.nearbyParticles.Length - 1) < p.freeSurfaceTerm)
-                p.pressure.Set(0, 0, 0);
+            if (p.particleDensity < p.freeSurfaceTerm)
+                p.pressure = resultP;
             else
                 p.pressure = calcPressure(p);
 
-            p.currentV = p.tempV + (-Time.deltaTime / p.DENSITY) * resultP;
-            p.transform.localPosition += p.currentV * Time.deltaTime;
-            p.UpdateForce();
+            p.currentV = p.tempV + (-Time.fixedDeltaTime / p.DENSITY) * p.pressure;
+            p.transform.localPosition += p.currentV * Time.fixedDeltaTime;
         }
     }
 
@@ -100,15 +111,14 @@ public class ParticleSpawn : MonoBehaviour {
         */ // = Vector<double>.Build.Dense(p.nearbyParticles.Length);
         
         //X = A.SolveIterative(B, new BiCgStab());
-
-        resultP.Set(0, 0, 0);
+        
         for (int i = 1; i < p.nearbyParticles.Length; i++)
         {
-            temp = p.nearbyParticles[i].pos() - p.pos();
-            resultP = resultP + ((float)( ( (X.At(i) - X.At(0)) / temp.sqrMagnitude) * p.weights[i]) ) * temp;
+            temp = p.nearbyParticles[i].Pos() - p.Pos();
+            resultP = resultP + ((float)( ( (X.At(i) - X.At(0)) / temp.magnitude) * p.weights[i]) ) * temp;
         }
 
-        resultP = resultP * (3f / p.defaultParticleDensity);
+        resultP = resultP * (float)(3d / p.defaultParticleDensity);
 
         return resultP;
     }
