@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class FluidParticle : Particle{
-    const float InteractionRadius = 2f;
+    const float InteractionRadius = 3f;
     [System.NonSerialized]
-    public double defaultParticleDensity = 41.2f;
+    public double defaultParticleDensity = 170.6f;
     public double particleDensity;
-    public float DENSITY = 997;
+    [System.NonSerialized]
+    public float DENSITY = 9.48f;
     public Vector3 Gravity;
     
     public Vector3 tempPos, currentV, tempV, pressure;
@@ -56,14 +57,24 @@ public class FluidParticle : Particle{
         }
         return particleDensity;
     }
-
+    public double CalcFluidDensity(float radius)
+    {
+        double n = CalcParticleDensity();
+        double density = 0;
+        Collider[] colliders = Physics.OverlapSphere(Pos(), radius);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if(colliders[i].gameObject.name.Equals(this.gameObject.name))
+                continue;
+            density += weightKernel(colliders[i].transform.localPosition);
+        }
+        return n / density;
+    }
     public void Initate()
     {
-        Collider[] colliders = Physics.OverlapSphere(tempPos, InteractionRadius);
+        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
         nearbyParticles = new Particle[colliders.Length];
         weights = new double[nearbyParticles.Length];
-        if (colliders.Length == 0)
-            Debug.DebugBreak();
         nearbyParticles[0] = this;
         
         particleDensity = 0;
@@ -110,7 +121,7 @@ public class FluidParticle : Particle{
 
     double weightKernel(Vector3 Pos)
     {
-        return (double)InteractionRadius / (double)((Pos - tempPos).magnitude);
+        return (double)InteractionRadius / (double)((Pos - this.Pos()).magnitude);
     }
 
     public double calcRightSideValue(int i)
@@ -150,8 +161,8 @@ public class FluidParticle : Particle{
 
     public void UpdateForce()
     {
-     //   if (gameObject.name.Equals("P31"))
-     //       Debug.DebugBreak();
+        //if (gameObject.name.Equals("P132"))
+        //    Debug.DebugBreak();
         force = currentV / Time.fixedDeltaTime + (currentV.x+currentV.y+currentV.z) * currentV + (1f / DENSITY) * pressure - Gravity;
         
     }

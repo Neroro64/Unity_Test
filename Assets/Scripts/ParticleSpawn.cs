@@ -10,7 +10,7 @@ using MathNet.Numerics.LinearAlgebra.Solvers;
 
 public class ParticleSpawn : MonoBehaviour {
     [System.NonSerialized]
-    public int NumberOfParticles = 200;
+    public int NumberOfParticles = 2000;
     public GameObject ParticlePrefab;
     public string pName = "P0";
     
@@ -33,11 +33,11 @@ public class ParticleSpawn : MonoBehaviour {
         
         Vector3 pos = new Vector3();
         int x = 0;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 20; i++)
         {
             for (int j = 0; j < 10; j++)
             {
-                for (int k = 0; k < 5; k++)
+                for (int k = 0; k < 10; k++)
                 {
                     pos.Set(j, i, k);
                     particles[x] = Instantiate<GameObject>(ParticlePrefab, transform).GetComponent<FluidParticle>();
@@ -61,6 +61,10 @@ public class ParticleSpawn : MonoBehaviour {
         {
             start = !start;
         }
+        else if (Input.GetKeyDown("d"))
+        {
+            Debug.Log(GameObject.Find(pName).GetComponent<FluidParticle>().CalcFluidDensity(1f));
+        }
     }
 
     private void FixedUpdate()
@@ -73,24 +77,28 @@ public class ParticleSpawn : MonoBehaviour {
     void calc()
     {
         FluidParticle p;
-        for (int i = 0; i < particles.Length; i++)
+        int i;
+        for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
 
             p.UpdateForce();
             p.tempV = p.currentV + Time.fixedDeltaTime * p.force;
-            p.tempPos = p.Pos() + p.tempV * Time.fixedDeltaTime;
-            resultP.Set(0, 0, 0);
-
+            p.tempPos = p.Pos();
+            p.transform.localPosition += p.tempV * Time.fixedDeltaTime;
+        }
+        for (i = 0; i < particles.Length; i++) {
+            p = particles[i];
             p.Initate();
-            
+
+            resultP.Set(0, 0, 0);
             if (p.particleDensity < p.freeSurfaceTerm)
                 p.pressure = resultP;
             else
                 p.pressure = calcPressure(p);
-
+            
             p.currentV = p.tempV + (-Time.fixedDeltaTime / p.DENSITY) * p.pressure;
-            p.transform.localPosition += p.currentV * Time.fixedDeltaTime;
+            p.transform.localPosition = p.tempPos + p.currentV * Time.fixedDeltaTime;
         }
     }
 
