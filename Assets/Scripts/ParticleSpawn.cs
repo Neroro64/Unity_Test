@@ -15,12 +15,12 @@ public class ParticleSpawn : MonoBehaviour {
     public string pName = "P0";
     
     private FluidParticle[] particles;
-    private SparseMatrix A;
+    private DiagonalMatrix A;
     private Vector<double> B;
     private Vector<double> X;
     private Vector3 resultP = new Vector3();
     private Vector3 temp;
-    private Func<int, int, double> calcWeight;
+    private Func<int, double> calcWeight;
     private Func<int, double> calcResult;
 
     private bool start = false;
@@ -33,13 +33,13 @@ public class ParticleSpawn : MonoBehaviour {
         
         Vector3 pos = new Vector3();
         int x = 0;
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 10; i++)
         {
-            for (int j = 0; j < 10; j++)
+            for (int j = 0; j < 20; j++)
             {
                 for (int k = 0; k < 10; k++)
                 {
-                    pos.Set(j, i, k);
+                    pos.Set(0.1f*j, 0.1f * i, 0.1f * k);
                     particles[x] = Instantiate<GameObject>(ParticlePrefab, transform).GetComponent<FluidParticle>();
                     particles[x].gameObject.transform.localPosition = pos;
                     particles[x].gameObject.name = "P" + ( x++);
@@ -57,13 +57,13 @@ public class ParticleSpawn : MonoBehaviour {
         else if (Input.GetKeyDown("p"))
             Debug.Log(GameObject.Find(pName).GetComponent<FluidParticle>().CalcParticleDensity());
 
+        else if (Input.GetKeyDown("d"))
+            Debug.Log(GameObject.Find(pName).GetComponent<FluidParticle>().CalcDensity());
+        else if (Input.GetKeyDown("l"))
+            Debug.Log(GameObject.Find(pName).GetComponent<FluidParticle>().CalcLambda());
         else if (Input.GetKeyDown("s"))
         {
             start = !start;
-        }
-        else if (Input.GetKeyDown("d"))
-        {
-            Debug.Log(GameObject.Find(pName).GetComponent<FluidParticle>().CalcFluidDensity(1f));
         }
     }
 
@@ -85,13 +85,14 @@ public class ParticleSpawn : MonoBehaviour {
             p.UpdateForce();
             p.tempV = p.currentV + Time.fixedDeltaTime * p.force;
             p.tempPos = p.Pos();
-            p.transform.localPosition += p.tempV * Time.fixedDeltaTime;
+
+            p.transform.localPosition +=  p.tempV * Time.fixedDeltaTime;
         }
         for (i = 0; i < particles.Length; i++) {
             p = particles[i];
-            p.Initate();
-
             resultP.Set(0, 0, 0);
+            p.Initate();
+            
             if (p.particleDensity < p.freeSurfaceTerm)
                 p.pressure = resultP;
             else
@@ -107,10 +108,11 @@ public class ParticleSpawn : MonoBehaviour {
         calcWeight = p.CalcMatrixValue;
         calcResult = p.calcRightSideValue;
         
-        A = SparseMatrix.Create(p.nearbyParticles.Length, p.nearbyParticles.Length, calcWeight);
-        B = Vector<double>.Build.Dense(p.nearbyParticles.Length, calcResult);
-        X = Vector<double>.Build.Dense(p.nearbyParticles.Length);
-        X = Solve(A, B, X);
+        A = DiagonalMatrix.Create(p.nearbyParticles.Length-1, p.nearbyParticles.Length-1, calcWeight);
+        B = Vector<double>.Build.Dense(p.nearbyParticles.Length-1, calcResult);
+        //X = Vector<double>.Build.Dense(p.nearbyParticles.Length);
+        //X = Solve(A, B, X);
+        X = A.Solve(B);
 
         /* calcWeight = p.CalcMatrixValue2;
         calcResult = p.calcRightSideValue2;
@@ -123,7 +125,7 @@ public class ParticleSpawn : MonoBehaviour {
         for (int i = 1; i < p.nearbyParticles.Length; i++)
         {
             temp = p.nearbyParticles[i].Pos() - p.Pos();
-            resultP = resultP + ((float)( ( (X.At(i) - X.At(0)) / temp.magnitude) * p.weights[i]) ) * temp;
+            resultP = resultP + ((float)( (X.At(i-1) / Mathf.Pow(temp.magnitude,2) * p.weights[i])) * temp);
         }
 
         resultP = resultP * (float)(3d / p.defaultParticleDensity);
@@ -131,6 +133,7 @@ public class ParticleSpawn : MonoBehaviour {
         return resultP;
     }
 
+    //Conjugate Gradient Iterative Method
     private Vector<double> Solve(SparseMatrix A, Vector<double> B, Vector<double> X)
     {
         int bLength = B.ToArray().Length;
