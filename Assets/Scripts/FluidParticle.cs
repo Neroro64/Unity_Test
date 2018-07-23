@@ -2,14 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using MathNet.Numerics.LinearAlgebra;
 
 public class FluidParticle : Particle{
-
     const float InteractionRadius = 0.21f;
     [System.NonSerialized]
-    public double defaultParticleDensity = 14.4185708f;
+    public double defaultParticleDensity = 14.418576f;
     public double particleDensity;
-    public float DENSITY = 1.0212486f;
+    public float DENSITY = 1.161f;
     public Vector3 Gravity;
     
     public Vector3 tempPos, currentV, tempV, pressure;
@@ -17,7 +17,7 @@ public class FluidParticle : Particle{
     [System.NonSerialized]
     public double freeSurfaceTerm;
 
-    double lambda = 0.0170174;
+    double lambda = 0.014686d;
     public double[] weights;
     double d_ParticleDensity;
     [System.NonSerialized]
@@ -70,13 +70,12 @@ public class FluidParticle : Particle{
                 continue;
             density += weightKernel(colliders[i].transform.localPosition);
         }
-        Debug.Log("sum of weights is " + density);
         return n / density;
     }
 
     public double CalcLambda()
     {
-        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius); // maybe unit volume
+        Collider[] colliders = Physics.OverlapSphere(Pos(), 0.1f); // maybe unit volume
         double weight, a = 0, b = 0;
         for (int i = 0; i < colliders.Length; i++)
         {
@@ -90,7 +89,7 @@ public class FluidParticle : Particle{
 
     }
     
-    public void Initate()
+    public void Initate(ref Vector<double> values, ref Vector<double> B, int k) 
     {
         Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
         nearbyParticles = new Particle[colliders.Length];
@@ -98,7 +97,7 @@ public class FluidParticle : Particle{
         nearbyParticles[0] = this;
         
         particleDensity = 0;
-
+        
         for (int i = 0, j = 1; j < nearbyParticles.Length; i++)
         {
             if (colliders[i].gameObject.name.Equals(this.gameObject.name))
@@ -106,10 +105,13 @@ public class FluidParticle : Particle{
             nearbyParticles[j] = colliders[i].GetComponent<Particle>();
             weights[j] = weightKernel(nearbyParticles[j].Pos());
             particleDensity += weights[j];
+
+            values.At(nearbyParticles[j].ID, weights[j]);
             j++;
         }
+        values.At(this.ID, -particleDensity);
+        B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / 6d * Time.fixedDeltaTime);
         
-        d_ParticleDensity = (double)defaultParticleDensity / (double)nearbyParticles.Length;
     }
 
 

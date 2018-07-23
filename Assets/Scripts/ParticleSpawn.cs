@@ -10,14 +10,15 @@ using MathNet.Numerics.LinearAlgebra.Solvers;
 
 public class ParticleSpawn : MonoBehaviour {
     [System.NonSerialized]
-    public int NumberOfParticles = 2000;
+    public int NumberOfParticles = 100;
     public GameObject ParticlePrefab;
     public string pName = "P0";
     
     private FluidParticle[] particles;
-    private DiagonalMatrix A;
+    private SparseMatrix A;
     private Vector<double> B;
     private Vector<double> X;
+    private Vector<double> values;
     private Vector3 resultP = new Vector3();
     private Vector3 temp;
     private Func<int, double> calcWeight;
@@ -33,19 +34,26 @@ public class ParticleSpawn : MonoBehaviour {
         
         Vector3 pos = new Vector3();
         int x = 0;
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 4; i++)
         {
-            for (int j = 0; j < 20; j++)
+            for (int j = 0; j < 5; j++)
             {
-                for (int k = 0; k < 10; k++)
+                for (int k = 0; k < 5; k++)
                 {
-                    pos.Set(0.1f*j, 0.1f * i, 0.1f * k);
+                    pos.Set(0.1f * j, 0.1f * i, 0.1f * k);
                     particles[x] = Instantiate<GameObject>(ParticlePrefab, transform).GetComponent<FluidParticle>();
                     particles[x].gameObject.transform.localPosition = pos;
-                    particles[x].gameObject.name = "P" + ( x++);
+                    particles[x].gameObject.name = "P" + ( x);
+                    particles[x].GetComponent<Particle>().ID = x;
+                    x++;
                 }
             }
         }
+
+        A = SparseMatrix.Create(NumberOfParticles, NumberOfParticles, 0);
+        B = Vector.Build.Dense(NumberOfParticles);
+        X = Vector.Build.Dense(NumberOfParticles, 0);
+        values = Vector.Build.Dense(NumberOfParticles, 0);
     }
 
     private void Update()
@@ -78,6 +86,7 @@ public class ParticleSpawn : MonoBehaviour {
     {
         FluidParticle p;
         int i;
+
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
@@ -88,31 +97,44 @@ public class ParticleSpawn : MonoBehaviour {
 
             p.transform.localPosition +=  p.tempV * Time.fixedDeltaTime;
         }
-        for (i = 0; i < particles.Length; i++) {
+        for (i = 0; i < particles.Length; i++)
+        {
+            p = particles[i];
+            p.Initate(ref values, ref B, i);
+            A.SetRow(i, values);
+        }
+
+        Solve(A, B, ref X);
+        for (i = 0; i < particles.Length; i++)
+        {
             p = particles[i];
             resultP.Set(0, 0, 0);
-            p.Initate();
-            
             if (p.particleDensity < p.freeSurfaceTerm)
                 p.pressure = resultP;
             else
                 p.pressure = calcPressure(p);
-            
+
             p.currentV = p.tempV + (-Time.fixedDeltaTime / p.DENSITY) * p.pressure;
             p.transform.localPosition = p.tempPos + p.currentV * Time.fixedDeltaTime;
         }
+
+        A.Clear();
+        B.Clear();
+        X.Clear();
+        values.Clear();
+        
     }
 
     Vector3 calcPressure(FluidParticle p)
     {
-        calcWeight = p.CalcMatrixValue;
-        calcResult = p.calcRightSideValue;
+        //calcWeight = p.CalcMatrixValue;
+        //calcResult = p.calcRightSideValue;
         
-        A = DiagonalMatrix.Create(p.nearbyParticles.Length-1, p.nearbyParticles.Length-1, calcWeight);
-        B = Vector<double>.Build.Dense(p.nearbyParticles.Length-1, calcResult);
+        //A = SparseMatrix.Create(p.nearbyParticles.Length-1, p.nearbyParticles.Length-1, calcWeight);
+        //B = Vector<double>.Build.Dense(p.nearbyParticles.Length-1, calcResult);
         //X = Vector<double>.Build.Dense(p.nearbyParticles.Length);
         //X = Solve(A, B, X);
-        X = A.Solve(B);
+        //X = A.Solve(B);
 
         /* calcWeight = p.CalcMatrixValue2;
         calcResult = p.calcRightSideValue2;
@@ -125,16 +147,19 @@ public class ParticleSpawn : MonoBehaviour {
         for (int i = 1; i < p.nearbyParticles.Length; i++)
         {
             temp = p.nearbyParticles[i].Pos() - p.Pos();
-            resultP = resultP + ((float)( (X.At(i-1) / Mathf.Pow(temp.magnitude,2) * p.weights[i])) * temp);
+            resultP = resultP + ((float)( ((X.At(p.nearbyParticles[i].ID) - X.At(p.ID)) / Mathf.Pow(temp.magnitude,2) * p.weights[i])) * temp);
         }
 
         resultP = resultP * (float)(3d / p.defaultParticleDensity);
-
+        
+        if (p.ID == 31)
+            Debug.DebugBreak();
+        
         return resultP;
     }
 
     //Conjugate Gradient Iterative Method
-    private Vector<double> Solve(SparseMatrix A, Vector<double> B, Vector<double> X)
+    private void Solve(SparseMatrix A, Vector<double> B, ref Vector<double> X)
     {
         int bLength = B.ToArray().Length;
         Vector<double> R = Vector<double>.Build.DenseOfVector(B);
@@ -161,8 +186,6 @@ public class ParticleSpawn : MonoBehaviour {
             RsOld = RsNew;
             k++;
         }
-
-        return X;
     }
 
 

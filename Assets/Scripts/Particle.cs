@@ -4,4 +4,5 @@ using UnityEngine;
 
 public abstract class Particle : MonoBehaviour {
     public abstract Vector3 Pos();
+    public int ID;
 }
