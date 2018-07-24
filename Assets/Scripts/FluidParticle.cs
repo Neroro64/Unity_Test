@@ -110,7 +110,7 @@ public class FluidParticle : Particle{
             j++;
         }
         values.At(this.ID, -particleDensity);
-        B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / 6d * Time.fixedDeltaTime);
+        B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / (6d * Time.fixedDeltaTime));
         
     }
 

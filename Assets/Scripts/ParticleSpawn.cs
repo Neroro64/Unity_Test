@@ -104,7 +104,9 @@ public class ParticleSpawn : MonoBehaviour {
             A.SetRow(i, values);
         }
 
-        Solve(A, B, ref X);
+        //Solve(A, B, ref X);
+        //X = A.Solve(B);
+        X = A.SolveIterative(B, new BiCgStab(), new ILU0Preconditioner());
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
@@ -119,7 +121,7 @@ public class ParticleSpawn : MonoBehaviour {
         }
 
         A.Clear();
-        B.Clear();
+        //B.Clear();
         X.Clear();
         values.Clear();
         
@@ -152,7 +154,7 @@ public class ParticleSpawn : MonoBehaviour {
 
         resultP = resultP * (float)(3d / p.defaultParticleDensity);
         
-        if (p.ID == 31)
+        if (p.ID == 50)
             Debug.DebugBreak();
         
         return resultP;
