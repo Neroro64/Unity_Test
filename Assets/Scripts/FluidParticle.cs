@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Double;
 
 public class FluidParticle : Particle{
     const float InteractionRadius = 0.21f;
@@ -23,12 +24,16 @@ public class FluidParticle : Particle{
     [System.NonSerialized]
     public Vector3 force;
 
+    private double term1 , term2;
+
     private void Start()
     {
         freeSurfaceTerm = defaultParticleDensity * 0.97d;
         currentV = new Vector3();
         pressure = new Vector3();
         Gravity = new Vector3(0, 9.8f, 0);
+        //term1 = 6d / (lambda * defaultParticleDensity);
+        //term2 = -DENSITY / Time.fixedDeltaTime;
     }
     
     public override Vector3 Pos()
@@ -89,7 +94,7 @@ public class FluidParticle : Particle{
 
     }
     
-    public void Initate(ref Vector<double> values, ref Vector<double> B, int k) 
+    public void Initate(ref SparseMatrix A, ref Vector<double> B, int k) 
     {
         Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
         nearbyParticles = new Particle[colliders.Length];
@@ -106,10 +111,11 @@ public class FluidParticle : Particle{
             weights[j] = weightKernel(nearbyParticles[j].Pos());
             particleDensity += weights[j];
 
-            values.At(nearbyParticles[j].ID, weights[j]);
+            A.At(k, nearbyParticles[j].ID, weights[j]);
             j++;
         }
-        values.At(this.ID, -particleDensity);
+        A.At(k, this.ID, -particleDensity);
+        //B.At(k, term2 * ((particleDensity - defaultParticleDensity) / defaultParticleDensity));
         B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / (6d * Time.fixedDeltaTime));
         
     }

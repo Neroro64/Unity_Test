@@ -6,6 +6,7 @@ using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double.Solvers;
 using MathNet.Numerics.LinearAlgebra.Solvers;
+using System.IO;
 
 
 public class ParticleSpawn : MonoBehaviour {
@@ -53,7 +54,7 @@ public class ParticleSpawn : MonoBehaviour {
         A = SparseMatrix.Create(NumberOfParticles, NumberOfParticles, 0);
         B = Vector.Build.Dense(NumberOfParticles);
         X = Vector.Build.Dense(NumberOfParticles, 0);
-        values = Vector.Build.Dense(NumberOfParticles, 0);
+        //values = Vector.Build.Dense(NumberOfParticles, 0);
     }
 
     private void Update()
@@ -100,13 +101,19 @@ public class ParticleSpawn : MonoBehaviour {
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
-            p.Initate(ref values, ref B, i);
-            A.SetRow(i, values);
+            p.Initate(ref A, ref B, i);
+            //A.SetRow(i, values);
         }
-
-        //Solve(A, B, ref X);
         //X = A.Solve(B);
-        X = A.SolveIterative(B, new BiCgStab(), new ILU0Preconditioner());
+        B = Vector.Build.Dense(NumberOfParticles, 1d);
+        //outPutMatrices();
+        //Debug.DebugBreak();
+        X = A.Multiply(B);
+        Debug.Log(X.DotProduct(X));
+        //Solve(A, B, ref X);
+        //X = A.SolveIterative(B, new BiCgStab());
+        outPutMatrices();
+        Debug.DebugBreak();
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
@@ -114,7 +121,10 @@ public class ParticleSpawn : MonoBehaviour {
             if (p.particleDensity < p.freeSurfaceTerm)
                 p.pressure = resultP;
             else
+            {
+                Debug.DebugBreak();
                 p.pressure = calcPressure(p);
+            }
 
             p.currentV = p.tempV + (-Time.fixedDeltaTime / p.DENSITY) * p.pressure;
             p.transform.localPosition = p.tempPos + p.currentV * Time.fixedDeltaTime;
@@ -123,7 +133,6 @@ public class ParticleSpawn : MonoBehaviour {
         A.Clear();
         //B.Clear();
         X.Clear();
-        values.Clear();
         
     }
 
@@ -154,8 +163,6 @@ public class ParticleSpawn : MonoBehaviour {
 
         resultP = resultP * (float)(3d / p.defaultParticleDensity);
         
-        if (p.ID == 50)
-            Debug.DebugBreak();
         
         return resultP;
     }
@@ -165,28 +172,58 @@ public class ParticleSpawn : MonoBehaviour {
     {
         int bLength = B.ToArray().Length;
         Vector<double> R = Vector<double>.Build.DenseOfVector(B);
-        float RsNew;
-        float RsOld;
+        double RsNew;
+        double RsOld;
         Vector<double> P = Vector<double>.Build.DenseOfVector(R);
         int k = 0;
 
         double a, b;
         Vector<double> t;
 
-        RsOld = (float)R.DotProduct(R);
+        RsOld = R.DotProduct(R);
         for (int i = 0; i < bLength; i++)
         {
             t = A.Multiply(P);
             a = RsOld / P.DotProduct(t);
             X = X + a * P;
             R = R - a * t;
-            RsNew = (float)R.DotProduct(R);
-            if (Mathf.Sqrt(RsNew) < 1E-10f)
+            RsNew = R.DotProduct(R);
+            if (Math.Sqrt(RsNew) < 1E-10f)
                 break;
             b = RsNew / RsOld;
             P = R + b * P;
             RsOld = RsNew;
             k++;
+        }
+    }
+
+    void outPutMatrices()
+    {
+        using (
+            var writer = new StreamWriter(File.Open(Path.Combine(Application.persistentDataPath, "Matrix data.txt"), FileMode.Create))
+        )
+        {
+            int e = 0;
+            writer.Write("Matrix A:" + Environment.NewLine);
+            for (int o = 0; o < NumberOfParticles; o++)
+            {
+                for (int w = 0; w < NumberOfParticles; w++)
+                {
+                    writer.Write(A.At(o, w).ToString("#.###0") + " ");
+                }
+                writer.Write(Environment.NewLine);
+            }
+
+            writer.Write("Vector B is:" + Environment.NewLine);
+            for (int o = 0; o < NumberOfParticles; o++)
+            {
+                writer.Write(B.At(o).ToString("#.###0") + " ");
+            }
+            writer.Write(Environment.NewLine + "Vector X is:" + Environment.NewLine);
+            for (int o = 0; o < NumberOfParticles; o++)
+            {
+                writer.Write(X.At(o).ToString("#.##0") + " ");
+            }
         }
     }
 
