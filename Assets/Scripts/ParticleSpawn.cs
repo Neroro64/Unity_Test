@@ -35,22 +35,22 @@ public class ParticleSpawn : MonoBehaviour {
         
         Vector3 pos = new Vector3();
         int x = 0;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 10; i++)
         {
-            for (int j = 0; j < 5; j++)
+            for (int j = 0; j < 10; j++)
             {
-                for (int k = 0; k < 5; k++)
-                {
-                    pos.Set(0.1f * j, 0.1f * i, 0.1f * k);
+                //for (int k = 0; k < 10; k++)
+                //{
+                    pos.Set(0.2f*j, 0.2f *  i, 0);
                     particles[x] = Instantiate<GameObject>(ParticlePrefab, transform).GetComponent<FluidParticle>();
                     particles[x].gameObject.transform.localPosition = pos;
-                    particles[x].gameObject.name = "P" + ( x);
+                    particles[x].gameObject.name = "P" + (x);
                     particles[x].GetComponent<Particle>().ID = x;
                     x++;
-                }
+                //}
             }
         }
-
+        resultP.Set(0, 0, 0);
         A = SparseMatrix.Create(NumberOfParticles, NumberOfParticles, 0);
         B = Vector.Build.Dense(NumberOfParticles);
         X = Vector.Build.Dense(NumberOfParticles, 0);
@@ -101,29 +101,33 @@ public class ParticleSpawn : MonoBehaviour {
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
-            p.Initate(ref A, ref B, i);
+            p.Initate(ref A, ref B, ref X, i);
             //A.SetRow(i, values);
         }
         //X = A.Solve(B);
-        B = Vector.Build.Dense(NumberOfParticles, 1d);
         //outPutMatrices();
         //Debug.DebugBreak();
-        X = A.Multiply(B);
-        Debug.Log(X.DotProduct(X));
-        //Solve(A, B, ref X);
+        Solve(A, B, ref X);
+        /*for (i = 0; i < particles.Length; i++)
+        {
+            if (X.At(i) < 0)
+                X.At(i, 0);
+        }*/
+        
         //X = A.SolveIterative(B, new BiCgStab());
         outPutMatrices();
         Debug.DebugBreak();
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
-            resultP.Set(0, 0, 0);
+            
             if (p.particleDensity < p.freeSurfaceTerm)
-                p.pressure = resultP;
+                p.pressure.Set(0, 0, 0);
             else
             {
-                Debug.DebugBreak();
                 p.pressure = calcPressure(p);
+                //resultP = p.pressure;
+                //Debug.DebugBreak();
             }
 
             p.currentV = p.tempV + (-Time.fixedDeltaTime / p.DENSITY) * p.pressure;
@@ -132,7 +136,7 @@ public class ParticleSpawn : MonoBehaviour {
 
         A.Clear();
         //B.Clear();
-        X.Clear();
+        //X.Clear();
         
     }
 
@@ -140,7 +144,7 @@ public class ParticleSpawn : MonoBehaviour {
     {
         //calcWeight = p.CalcMatrixValue;
         //calcResult = p.calcRightSideValue;
-        
+
         //A = SparseMatrix.Create(p.nearbyParticles.Length-1, p.nearbyParticles.Length-1, calcWeight);
         //B = Vector<double>.Build.Dense(p.nearbyParticles.Length-1, calcResult);
         //X = Vector<double>.Build.Dense(p.nearbyParticles.Length);
@@ -152,26 +156,26 @@ public class ParticleSpawn : MonoBehaviour {
         A = SparseMatrix.Create(p.nearbyParticles.Length-1, p.nearbyParticles.Length, calcWeight);
         B = Vector<double>.Build.Dense(p.nearbyParticles.Length-1, calcResult);
         */ // = Vector<double>.Build.Dense(p.nearbyParticles.Length);
-        
+
         //X = A.SolveIterative(B, new BiCgStab());
-        
+        Vector3 result = new Vector3();
         for (int i = 1; i < p.nearbyParticles.Length; i++)
         {
             temp = p.nearbyParticles[i].Pos() - p.Pos();
-            resultP = resultP + ((float)( ((X.At(p.nearbyParticles[i].ID) - X.At(p.ID)) / Mathf.Pow(temp.magnitude,2) * p.weights[i])) * temp);
+            result = resultP + ((float)( ((X.At(p.nearbyParticles[i].ID) - X.At(p.ID)) / Mathf.Pow(temp.magnitude,2) * p.weights[i])) * temp);
         }
 
-        resultP = resultP * (float)(3d / p.defaultParticleDensity);
+        result = result * (float)(3d / p.defaultParticleDensity);
         
         
-        return resultP;
+        return result;
     }
 
     //Conjugate Gradient Iterative Method
     private void Solve(SparseMatrix A, Vector<double> B, ref Vector<double> X)
     {
         int bLength = B.ToArray().Length;
-        Vector<double> R = Vector<double>.Build.DenseOfVector(B);
+        Vector<double> R = B - A.Multiply(X);
         double RsNew;
         double RsOld;
         Vector<double> P = Vector<double>.Build.DenseOfVector(R);
@@ -188,7 +192,7 @@ public class ParticleSpawn : MonoBehaviour {
             X = X + a * P;
             R = R - a * t;
             RsNew = R.DotProduct(R);
-            if (Math.Sqrt(RsNew) < 1E-10f)
+            if (Math.Sqrt(RsNew) < 1E-10d)
                 break;
             b = RsNew / RsOld;
             P = R + b * P;

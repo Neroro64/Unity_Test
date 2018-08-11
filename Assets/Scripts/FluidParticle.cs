@@ -6,19 +6,19 @@ using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
 
 public class FluidParticle : Particle{
-    const float InteractionRadius = 0.21f;
+    const float InteractionRadius = 2.1f;
     [System.NonSerialized]
     public double defaultParticleDensity = 14.418576f;
     public double particleDensity;
+    [System.NonSerialized]
     public float DENSITY = 1.161f;
     public Vector3 Gravity;
     
-    public Vector3 tempPos, currentV, tempV, pressure;
     public Particle[] nearbyParticles;
     [System.NonSerialized]
     public double freeSurfaceTerm;
 
-    double lambda = 0.014686d;
+    double lambda =1.7d;
     public double[] weights;
     double d_ParticleDensity;
     [System.NonSerialized]
@@ -32,8 +32,8 @@ public class FluidParticle : Particle{
         currentV = new Vector3();
         pressure = new Vector3();
         Gravity = new Vector3(0, 9.8f, 0);
-        //term1 = 6d / (lambda * defaultParticleDensity);
-        //term2 = -DENSITY / Time.fixedDeltaTime;
+        term1 = 6d / (lambda * defaultParticleDensity);
+        term2 = -DENSITY / (Time.fixedDeltaTime*Time.fixedDeltaTime);
     }
     
     public override Vector3 Pos()
@@ -43,7 +43,7 @@ public class FluidParticle : Particle{
 
     public void checkNearbyObjects()
     {
-        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
+        Collider[] colliders = Physics.OverlapCircleAll(Pos(), InteractionRadius);
         Debug.Log(colliders.Length);
         for (int i = 0; i < colliders.Length; i++)
         {
@@ -67,7 +67,7 @@ public class FluidParticle : Particle{
     {
         double n = CalcParticleDensity();
 
-        Collider[] colliders = Physics.OverlapSphere(Pos(), 0.1f);
+        Collider[] colliders = Physics.OverlapSphere(Pos(), 1f);
         double density = 0;
         for (int i = 0; i < colliders.Length; i++)
         {
@@ -80,7 +80,7 @@ public class FluidParticle : Particle{
 
     public double CalcLambda()
     {
-        Collider[] colliders = Physics.OverlapSphere(Pos(), 0.1f); // maybe unit volume
+        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius); // maybe unit volume
         double weight, a = 0, b = 0;
         for (int i = 0; i < colliders.Length; i++)
         {
@@ -94,7 +94,7 @@ public class FluidParticle : Particle{
 
     }
     
-    public void Initate(ref SparseMatrix A, ref Vector<double> B, int k) 
+    public void Initate(ref SparseMatrix A, ref Vector<double> B, ref Vector<double> X,  int k) 
     {
         Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
         nearbyParticles = new Particle[colliders.Length];
@@ -114,10 +114,25 @@ public class FluidParticle : Particle{
             A.At(k, nearbyParticles[j].ID, weights[j]);
             j++;
         }
-        A.At(k, this.ID, -particleDensity);
-        //B.At(k, term2 * ((particleDensity - defaultParticleDensity) / defaultParticleDensity));
-        B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / (6d * Time.fixedDeltaTime));
-        
+        if (particleDensity < freeSurfaceTerm)
+        {
+            A.At(k, this.ID, 0);
+            X.At(k, 1d);
+            //B.At(k, term2 * ((particleDensity - defaultParticleDensity) / defaultParticleDensity) +
+            //    ((6d*particleDensity) / (lambda*defaultParticleDensity)));
+            B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / (6d  * Time.fixedDeltaTime*Time.fixedDeltaTime) + particleDensity);
+            //B.At(k, 0);
+        }
+        else
+        {
+            A.At(k, this.ID, -particleDensity);
+            X.At(k, 0);
+            //B.At(k, term2 * ((particleDensity - defaultParticleDensity) / defaultParticleDensity));
+
+            B.At(k, (-lambda * DENSITY * (particleDensity - defaultParticleDensity)) / (6d * Time.fixedDeltaTime * Time.fixedDeltaTime));
+        }
+
+
     }
 
 
@@ -180,10 +195,24 @@ public class FluidParticle : Particle{
     public void UpdateForce()
     {
 
-     //   if (gameObject.name.Equals("P31"))
-     //       Debug.DebugBreak();
-        force = currentV / Time.fixedDeltaTime + (1f / DENSITY) * pressure - Gravity;
+        //if (gameObject.name.Equals("P31"))
+          //  Debug.DebugBreak();
+        force = currentV / Time.fixedDeltaTime  + (1f / DENSITY) * pressure - Gravity;
 
         
+    }
+
+    private float calcVelocityGradient()
+    {
+        double result = 0;
+        Particle p;
+        for (int i = 1; i < nearbyParticles.Length; i++)
+        {
+            p = nearbyParticles[i];
+            result += Vector3.Dot((p.currentV - this.currentV), (p.Pos() - this.Pos())) /
+                (p.Pos() - this.Pos()).magnitude;
+            result *= weights[i];
+        }
+        return (float) (result * (6d / defaultParticleDensity));
     }
 }
