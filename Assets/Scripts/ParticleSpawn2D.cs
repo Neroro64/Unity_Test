@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System;
 using UnityEngine;
+using UnityEditor;
 using MathNet.Numerics.LinearAlgebra.Double;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double.Solvers;
@@ -74,7 +75,10 @@ public class ParticleSpawn2D : MonoBehaviour {
     private void FixedUpdate()
     {
         if (start)
+        {
             calc();
+            EditorApplication.isPaused = true;
+        }
     }
 
 
@@ -101,8 +105,8 @@ public class ParticleSpawn2D : MonoBehaviour {
                 X.At(i, 0);
         }*/
         
-        //outPutMatrices();
-        //Debug.DebugBreak();
+        outPutMatrices();
+        Debug.DebugBreak();
 
         for (i = 0; i < particles.Length; i++)
         {
@@ -135,8 +139,8 @@ public class ParticleSpawn2D : MonoBehaviour {
         }
 
         result = result * (float)(2d / p.defaultPND);
-        if (p.ID == 415)
-            Debug.DebugBreak();
+        //if (p.ID == 415)
+            //(Debug.DebugBreak();
 
         return result;
     }
