@@ -43,7 +43,7 @@ public class FluidParticle : Particle{
 
     public void checkNearbyObjects()
     {
-        Collider[] colliders = Physics.OverlapCircleAll(Pos(), InteractionRadius);
+        Collider[] colliders = Physics.OverlapSphere(Pos(), InteractionRadius);
         Debug.Log(colliders.Length);
         for (int i = 0; i < colliders.Length; i++)
         {

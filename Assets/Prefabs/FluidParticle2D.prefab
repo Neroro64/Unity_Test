@@ -19,8 +19,8 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 4440062797895270}
+  - component: {fileID: 114696522594648430}
   - component: {fileID: 212695908865326728}
-  - component: {fileID: 114025346087866038}
   - component: {fileID: 58692398858785436}
   m_Layer: 0
   m_Name: FluidParticle2D
@@ -56,8 +56,8 @@ CircleCollider2D:
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
-  m_Radius: 0.1
---- !u!114 &114025346087866038
+  m_Radius: 0.08
+--- !u!114 &114696522594648430
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
@@ -65,18 +65,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 1922262822815768}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6cc6ef6ca27c8c42b4b2bddf13ababb, type: 3}
+  m_Script: {fileID: 11500000, guid: e97cbc8c6f9cb9544aa6fe54b5715230, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   ID: 0
-  tempPos: {x: 0, y: 0, z: 0}
-  currentV: {x: 0, y: 0, z: 0}
-  tempV: {x: 0, y: 0, z: 0}
-  pressure: {x: 0, y: 0, z: 0}
-  particleDensity: 0
-  Gravity: {x: 0, y: 0, z: 0}
+  VELOCITY: {x: 0, y: 0}
+  PRESSURE: {x: 0, y: 0}
+  GRAVITY: {x: 0, y: 9.8}
+  PND: 0
+  defaultPND: 0
+  freeSurfaceTerm: 0
   nearbyParticles: []
-  weights: []
+  WEIGHTS: []
 --- !u!212 &212695908865326728
 SpriteRenderer:
   m_ObjectHideFlags: 1

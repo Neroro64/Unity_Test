@@ -37,11 +37,11 @@ public class ParticleSpawn2D : MonoBehaviour {
         {
             for (int j = 0; j < Ysize; j++)
             {
-                    pos.Set(0.2f*j, 0.2f);
+                    pos.Set(0.2f*i, 0.2f*j);
                     particles[x] = Instantiate<GameObject>(ParticlePrefab, transform).GetComponent<Particle2D>();
                     particles[x].gameObject.transform.localPosition = pos;
                     particles[x].gameObject.name = "P" + (x);
-                    particles[x].GetComponent<Particle>().ID = x;
+                    particles[x].GetComponent<Particle2D>().ID = x;
                     x++;
             }
         }
@@ -86,7 +86,7 @@ public class ParticleSpawn2D : MonoBehaviour {
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
-            p.UpdateForce();
+            p.InitVelocity();
         }
         for (i = 0; i < particles.Length; i++)
         {
@@ -101,8 +101,8 @@ public class ParticleSpawn2D : MonoBehaviour {
                 X.At(i, 0);
         }*/
         
-        outPutMatrices();
-        Debug.DebugBreak();
+        //outPutMatrices();
+        //Debug.DebugBreak();
 
         for (i = 0; i < particles.Length; i++)
         {
@@ -115,8 +115,8 @@ public class ParticleSpawn2D : MonoBehaviour {
                 p.PRESSURE = calcPressure(p);
             }
 
-            p.currentV = p.tempV + (-Time.fixedDeltaTime / p.DENSITY) * p.pressure;
-            p.transform.localPosition = p.tempPos + p.currentV * Time.fixedDeltaTime;
+            p.UpdateForce();
+            p.UpdateVelocity();
         }
 
         A.Clear();
@@ -131,19 +131,19 @@ public class ParticleSpawn2D : MonoBehaviour {
         for (int i = 1; i < p.nearbyParticles.Length; i++)
         {
             temp = p.nearbyParticles[i].Pos() - p.Pos();
-            result = resultP + ((float)( ((X.At(p.nearbyParticles[i].ID) - X.At(p.ID)) / Mathf.Pow(temp.magnitude,2) * p.weights[i])) * temp);
+            result = result + ((float)( ((X.At(p.nearbyParticles[i].ID) - X.At(p.ID)) / Mathf.Pow(temp.magnitude,2) * p.WEIGHTS[i])) * temp);
         }
 
-        result = result * (float)(3d / p.defaultParticleDensity);
-        
-        
+        result = result * (float)(2d / p.defaultPND);
+        if (p.ID == 415)
+            Debug.DebugBreak();
+
         return result;
     }
 
     //Conjugate Gradient Iterative Method
     private void Solve(SparseMatrix A, Vector<double> B, ref Vector<double> X)
     {
-        int bLength = B.ToArray().Length;
         Vector<double> R = B - A.Multiply(X);
         double RsNew;
         double RsOld;
@@ -154,7 +154,7 @@ public class ParticleSpawn2D : MonoBehaviour {
         Vector<double> t;
 
         RsOld = R.DotProduct(R);
-        for (int i = 0; i < bLength; i++)
+        for (int i = 0; i < NumberOfParticles; i++)
         {
             t = A.Multiply(P);
             a = RsOld / P.DotProduct(t);
@@ -199,7 +199,5 @@ public class ParticleSpawn2D : MonoBehaviour {
             }
         }
     }
-
-
-
+    
 }
