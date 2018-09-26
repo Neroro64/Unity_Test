@@ -63,9 +63,9 @@ public class FluidParticle2D : Particle2D {
         }
         if (PND < freeSurfaceTerm)
         {
-            A.At(k, this.ID, 0);//A.At(k, this.ID, -PND);
-            X.At(k, 0);
-            B.At(k,( (-lambda * DENSITY) / (4d *  Time.fixedDeltaTime) ) * (PND - defaultPND) + PND);
+            A.At(k, this.ID, -PND);
+            X.At(k, 1);
+            B.At(k, 0);//B.At(k,( (-lambda * DENSITY) / (4d *  Time.fixedDeltaTime) ) * (PND - defaultPND) + PND);
         }
         else
         {
