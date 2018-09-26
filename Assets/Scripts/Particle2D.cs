@@ -16,6 +16,7 @@ public abstract class Particle2D : MonoBehaviour {
     public double[] WEIGHTS;
 
     public abstract Vector2 Pos();
+    public abstract void UpdatePND();
     public abstract void InitVelocity();
     public abstract void UpdateForce();
     public abstract void Initiate(ref SparseMatrix A, ref Vector<double> B, ref Vector<double> X, int k);

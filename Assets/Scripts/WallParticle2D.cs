@@ -23,6 +23,10 @@ public class WallParticle2D : Particle2D {
     {
         return transform.localPosition;
     }
+    public override void UpdatePND()
+    {
+        return;
+    }
     public override void Initiate(ref SparseMatrix A, ref Vector<double> B, ref Vector<double> X, int k)
     {
         Collider2D[] colliders = Physics2D.OverlapCircleAll(Pos(), Re);

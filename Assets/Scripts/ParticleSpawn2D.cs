@@ -55,7 +55,7 @@ public class ParticleSpawn2D : MonoBehaviour {
                     x++;
             }
         }
-
+        /*
         GameObject dummy;
         for (int i = 0; i < Xsize_wall; i++)
         {
@@ -105,7 +105,8 @@ public class ParticleSpawn2D : MonoBehaviour {
             dummy = Instantiate<GameObject>(DummyParticlePrefab, WallPrefab.transform);
             dummy.transform.localPosition = pos;
 
-        }
+        }*/
+
         //Setting up matrix A and the vectors for pressure calculation 
         A = SparseMatrix.Create(NumberOfParticles + NumOfWallParticles, NumberOfParticles + NumOfWallParticles, 0);
         B = Vector.Build.Dense(NumberOfParticles+NumOfWallParticles);
@@ -137,7 +138,10 @@ public class ParticleSpawn2D : MonoBehaviour {
         {
             calc();
             if (t++ % 5 == 0)
+            {
                 EditorApplication.isPaused = true;
+                outPutMatrices();
+            }
         }
     }
 
@@ -155,6 +159,7 @@ public class ParticleSpawn2D : MonoBehaviour {
         for (i = 0; i < particles.Length; i++)
         {
             p = particles[i];
+            p.UpdatePND();
             p.Initiate(ref A, ref B, ref X, i);
         }
 
@@ -165,8 +170,6 @@ public class ParticleSpawn2D : MonoBehaviour {
                 X.At(i, 0);
         }
 
-        //outPutMatrices();
-        //Debug.DebugBreak();
 
         for (i = 0; i < particles.Length; i++)
         {
